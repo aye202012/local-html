@@ -1,0 +1,880 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>Quick Log</title>
+<style>
+  :root {
+    --bg: #fafaf8;
+    --card: #ffffff;
+    --border: #e7e5e0;
+    --text: #292524;
+    --text-dim: #78716c;
+    --text-faint: #a8a29e;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    padding-bottom: 40px;
+  }
+  .wrap { max-width: 480px; margin: 0 auto; padding: 20px 16px; }
+  header { display: flex; align-items: baseline; justify-content: space-between; margin-bottom: 18px; }
+  h1 { font-size: 22px; font-weight: 700; margin: 0; letter-spacing: -0.01em; }
+  #dateInput {
+    font-size: 14px; color: var(--text-dim); background: none;
+    border: none; border-bottom: 1px solid var(--border); padding: 4px 0;
+  }
+  .card {
+    background: var(--card); border: 1px solid var(--border); border-radius: 16px;
+    padding: 16px; margin-bottom: 20px; box-shadow: 0 1px 2px rgba(0,0,0,0.03);
+  }
+  .type-row {
+    display: flex; gap: 8px; overflow-x: auto; padding-bottom: 12px;
+    margin: -2px -2px 0; padding-left: 2px; padding-right: 2px;
+    scrollbar-width: none;
+  }
+  .type-row::-webkit-scrollbar { display: none; }
+  .type-pill {
+    flex-shrink: 0; padding: 7px 14px; border-radius: 999px; font-size: 14px;
+    font-weight: 500; border: none; background: #f5f4f2; color: var(--text-dim);
+    cursor: pointer; transition: background 0.15s, color 0.15s;
+  }
+  .type-pill.active { color: #fff; }
+  .field-row { display: flex; gap: 12px; margin-bottom: 12px; }
+  .field { flex: 1; }
+  .field label { display: block; font-size: 12px; color: var(--text-dim); margin-bottom: 4px; }
+  .field input {
+    width: 100%; border: 1px solid var(--border); border-radius: 10px;
+    padding: 8px 10px; font-size: 15px; background: #fff; color: var(--text);
+  }
+  .items-chips { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 8px; }
+  .chip {
+    display: inline-flex; align-items: center; gap: 5px; background: #f5f4f2;
+    color: var(--text); font-size: 13px; padding: 5px 10px; border-radius: 999px;
+  }
+  .chip button {
+    border: none; background: none; color: var(--text-faint); font-size: 15px;
+    cursor: pointer; padding: 0; line-height: 1;
+  }
+  .item-input-wrap { position: relative; margin-bottom: 10px; }
+  #itemInput {
+    width: 100%; border: 1px solid var(--border); border-radius: 10px;
+    padding: 10px 12px; font-size: 15px;
+  }
+  .suggestions {
+    position: absolute; z-index: 10; left: 0; right: 0; top: 100%; margin-top: 4px;
+    background: #fff; border: 1px solid var(--border); border-radius: 10px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.08); overflow: hidden; display: none;
+  }
+  .suggestions button {
+    display: block; width: 100%; text-align: left; padding: 9px 12px;
+    border: none; background: none; font-size: 14px; color: var(--text-dim);
+    border-bottom: 1px solid #f2f1ee; cursor: pointer;
+  }
+  .suggestions button:last-child { border-bottom: none; }
+  .suggestions button:hover { background: #faf9f7; }
+  .word-chips { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 10px; }
+  .word-chip {
+    font-size: 12px; padding: 5px 10px; border-radius: 999px; background: #fff;
+    border: 1px solid; cursor: pointer;
+  }
+  .btn-row { display: flex; gap: 8px; }
+  .btn {
+    flex: 1; padding: 10px; border-radius: 10px; font-size: 14px; font-weight: 600;
+    border: 1px solid var(--border); background: #fff; color: var(--text-dim); cursor: pointer;
+  }
+  .btn:disabled { opacity: 0.35; }
+  .btn-primary { color: #fff; border: none; background: #c17a3f; }
+  .section-head {
+    display: flex; align-items: center; justify-content: space-between;
+    margin-bottom: 8px;
+  }
+  .section-head h2 {
+    font-size: 12px; font-weight: 700; text-transform: uppercase;
+    letter-spacing: 0.04em; color: var(--text-dim); margin: 0;
+  }
+  #exportBtn, #exportAllBtn, #exportCsvBtn { font-size: 12px; font-weight: 600; color: var(--text-dim); text-decoration: underline; background: none; border: none; cursor: pointer; }
+  .empty { color: var(--text-faint); font-size: 14px; text-align: center; padding: 24px 0; font-style: italic; }
+  ul#entryList { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
+  .entry {
+    background: #fff; border: 1px solid var(--border); border-radius: 12px;
+    padding: 10px 12px; display: flex; justify-content: space-between; gap: 8px;
+  }
+  .entry-meta { display: flex; align-items: center; gap: 6px; margin-bottom: 2px; flex-wrap: wrap; }
+  .type-badge { font-size: 11px; font-weight: 700; padding: 2px 6px; border-radius: 5px; }
+  .entry-time, .entry-extra { font-size: 12px; color: var(--text-faint); }
+  .entry-items { font-size: 14px; color: var(--text); margin: 0; }
+  .delete-btn { border: none; background: none; color: #d6d3cf; font-size: 16px; cursor: pointer; flex-shrink: 0; }
+  .entry-actions { display: flex; flex-direction: column; align-items: flex-end; gap: 6px; flex-shrink: 0; }
+  .edit-btn { border: none; background: none; color: var(--text-faint); font-size: 12px; font-weight: 600; cursor: pointer; padding: 0; }
+  #cancelEditBtn {
+    display: none; font-size: 12px; color: var(--text-dim); background: none;
+    border: none; text-decoration: underline; cursor: pointer; margin-bottom: 10px;
+  }
+  .editing-banner {
+    display: none; font-size: 12px; font-weight: 600; color: #a8542f;
+    background: #fdf3ea; border: 1px solid #f3d9bd; border-radius: 8px;
+    padding: 6px 10px; margin-bottom: 10px;
+  }
+  #resetBtn { font-size: 12px; color: var(--text-faint); background: none; border: none; margin-top: 16px; cursor: pointer; }
+  .vocab-section { margin-top: 18px; padding-top: 14px; border-top: 1px solid var(--border); }
+  #manageWordsBtn {
+    font-size: 12px; font-weight: 600; color: var(--text-dim); background: none;
+    border: none; text-decoration: underline; cursor: pointer; padding: 0;
+  }
+  #vocabPanel { margin-top: 10px; }
+  .vocab-actions { display: flex; gap: 14px; margin-bottom: 10px; }
+  #exportVocabBtn, #importVocabLabel {
+    font-size: 12px; font-weight: 600; color: var(--text-dim); background: #f5f4f2;
+    border: none; border-radius: 8px; padding: 6px 10px; cursor: pointer; display: inline-block;
+  }
+  ul#vocabList { list-style: none; margin: 0; padding: 0; max-height: 260px; overflow-y: auto; }
+  ul#vocabList li {
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 6px 8px; border-bottom: 1px solid #f2f1ee; font-size: 13px;
+  }
+  ul#vocabList li span.vcount { color: var(--text-faint); margin-left: 6px; }
+  ul#vocabList li button {
+    border: none; background: none; color: #d6d3cf; font-size: 15px; cursor: pointer;
+  }
+  #statusMsg {
+    font-size: 12px; padding: 8px 12px; border-radius: 8px; margin-bottom: 16px; display: none;
+  }
+  #statusMsg.error { display: block; background: #fef2f2; color: #b91c1c; border: 1px solid #fecaca; }
+  #statusMsg.ok { display: block; background: #f0fdf4; color: #15803d; border: 1px solid #bbf7d0; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>Quick Log</h1>
+    <input type="date" id="dateInput">
+  </header>
+
+  <div id="statusMsg"></div>
+
+  <div class="card">
+    <div class="editing-banner" id="editingBanner">Editing entry — Update entry to save changes</div>
+    <button id="cancelEditBtn">Cancel edit</button>
+    <div class="type-row" id="typeRow"></div>
+
+    <div class="field-row">
+      <div class="field">
+        <label id="timeLabel">Start time</label>
+        <input type="time" id="timeInput">
+      </div>
+      <div class="field" id="secondField">
+        <label id="secondLabel">End time</label>
+        <input type="time" id="secondInput">
+      </div>
+    </div>
+
+    <div class="items-chips" id="itemsChips"></div>
+
+    <div class="item-input-wrap">
+      <input type="text" id="itemInput" placeholder="Add an item...">
+      <div class="suggestions" id="phraseSuggestions"></div>
+    </div>
+
+    <div class="word-chips" id="wordChips"></div>
+
+    <div class="btn-row">
+      <button class="btn" id="addItemBtn">+ Add item</button>
+      <button class="btn btn-primary" id="saveBtn">Save entry</button>
+    </div>
+  </div>
+
+  <div class="section-head">
+    <h2 id="listHeading">Today (0)</h2>
+    <span>
+      <button id="exportBtn">Export .txt</button>
+      <button id="exportAllBtn" style="margin-left:10px;">Export all days</button>
+      <button id="exportCsvBtn" style="margin-left:10px;">Export CSV (all days)</button>
+    </span>
+  </div>
+  <div id="entryListWrap"></div>
+
+  <button id="resetBtn">Erase all entries</button>
+  <div class="vocab-section">
+    <button id="manageWordsBtn">Manage remembered words</button>
+    <div id="vocabPanel" style="display:none;">
+      <div class="vocab-actions">
+        <button id="exportVocabBtn">Export words (.json)</button>
+        <label id="importVocabLabel">Import words (.json)
+          <input type="file" id="importVocabInput" accept="application/json,.json" style="display:none;">
+        </label>
+      </div>
+      <ul id="vocabList"></ul>
+    </div>
+  </div>
+</div>
+
+<script>
+const EVENT_TYPES = ['Breakfast', 'Lunch', 'Dinner', 'Snack', 'Exercise', 'Other', 'Medication'];
+const TYPE_COLORS = {
+  Breakfast: '#c17a3f', Lunch: '#a8542f', Dinner: '#8a6d3b', Snack: '#4a7c6f',
+  Exercise: '#3d6b8a', Other: '#6b5b95', Medication: '#8a3d5c',
+};
+
+let entriesByDate = {};
+let vocab = { phrases: {}, bigram: {} };
+let currentDate = todayStr();
+let eventType = 'Breakfast';
+let items = [];
+let editingId = null;
+let endTimeTouched = false;
+
+function todayStr() {
+  const d = new Date();
+  return d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
+}
+function nowTimeStr() {
+  const d = new Date();
+  return String(d.getHours()).padStart(2,'0') + ':' + String(d.getMinutes()).padStart(2,'0');
+}
+function to12Hour(hhmm) {
+  if (!hhmm) return '';
+  const [h, m] = hhmm.split(':').map(Number);
+  const period = h >= 12 ? 'pm' : 'am';
+  let h12 = h % 12; if (h12 === 0) h12 = 12;
+  return h12 + ':' + String(m).padStart(2,'0') + ' ' + period;
+}
+function normWord(w) { return w.toLowerCase().replace(/[.,!?;:]+$/, ''); }
+
+function showStatus(msg, kind) {
+  const el = document.getElementById('statusMsg');
+  el.textContent = msg;
+  el.className = kind;
+  if (kind === 'ok') setTimeout(() => { el.className = ''; }, 1500);
+}
+
+function load() {
+  try {
+    const e = localStorage.getItem('quicklog_entries');
+    const v = localStorage.getItem('quicklog_vocab');
+    if (e) entriesByDate = JSON.parse(e);
+    if (v) vocab = JSON.parse(v);
+  } catch (err) {
+    showStatus('Could not load saved data - starting fresh.', 'error');
+  }
+}
+function saveEntries() {
+  try {
+    localStorage.setItem('quicklog_entries', JSON.stringify(entriesByDate));
+  } catch (err) {
+    showStatus('Could not save - storage may be full or blocked.', 'error');
+  }
+}
+function saveVocab() {
+  try {
+    localStorage.setItem('quicklog_vocab', JSON.stringify(vocab));
+  } catch (err) {
+    showStatus('Could not save word suggestions.', 'error');
+  }
+}
+
+function saveDraft() {
+  try {
+    const draft = {
+      eventType: eventType,
+      items: items,
+      itemInput: document.getElementById('itemInput').value,
+      time: document.getElementById('timeInput').value,
+      secondInput: document.getElementById('secondInput').value,
+      currentDate: currentDate,
+      editingId: editingId,
+      endTimeTouched: endTimeTouched,
+    };
+    localStorage.setItem('quicklog_draft', JSON.stringify(draft));
+  } catch (err) {
+    // draft saving is best-effort; don't surface an error for this
+  }
+}
+
+function loadDraft() {
+  try {
+    const raw = localStorage.getItem('quicklog_draft');
+    if (!raw) return null;
+    return JSON.parse(raw);
+  } catch (err) {
+    return null;
+  }
+}
+
+function clearDraft() {
+  try { localStorage.removeItem('quicklog_draft'); } catch (err) {}
+}
+
+function learnFromItem(text) {
+  const trimmed = text.trim();
+  if (!trimmed) return;
+  vocab.phrases[trimmed] = (vocab.phrases[trimmed] || 0) + 1;
+  const words = trimmed.split(/\s+/).map(normWord).filter(Boolean);
+  for (let i = 0; i < words.length - 1; i++) {
+    const a = words[i], b = words[i+1];
+    if (!vocab.bigram[a]) vocab.bigram[a] = {};
+    vocab.bigram[a][b] = (vocab.bigram[a][b] || 0) + 1;
+  }
+  saveVocab();
+}
+
+function matchingPhrases(prefix) {
+  if (!prefix.trim()) return [];
+  const p = prefix.toLowerCase();
+  return Object.entries(vocab.phrases)
+    .filter(([phrase]) => phrase.toLowerCase().startsWith(p) && phrase.toLowerCase() !== p)
+    .sort((a,b) => b[1]-a[1]).slice(0,5).map(([phrase]) => phrase);
+}
+function nextWordSuggestions(itemInputVal) {
+  if (!itemInputVal.endsWith(' ') && itemInputVal.length > 0) return [];
+  const words = itemInputVal.trim().split(/\s+/).map(normWord).filter(Boolean);
+  if (words.length === 0) return [];
+  const last = words[words.length-1];
+  const followers = vocab.bigram[last];
+  if (!followers) return [];
+  return Object.entries(followers).sort((a,b) => b[1]-a[1]).slice(0,4).map(([w]) => w);
+}
+
+function renderTypeRow() {
+  const row = document.getElementById('typeRow');
+  row.innerHTML = '';
+  EVENT_TYPES.forEach(t => {
+    const btn = document.createElement('button');
+    btn.className = 'type-pill' + (t === eventType ? ' active' : '');
+    btn.textContent = t;
+    btn.style.background = t === eventType ? TYPE_COLORS[t] : '#f5f4f2';
+    btn.onclick = () => { eventType = t; renderTypeRow(); renderFields(); saveDraft(); };
+    row.appendChild(btn);
+  });
+}
+
+function renderFields() {
+  const timeLabel = document.getElementById('timeLabel');
+  const secondLabel = document.getElementById('secondLabel');
+  const secondInput = document.getElementById('secondInput');
+  timeLabel.textContent = eventType === 'Exercise' ? 'Time finished' : 'Start time';
+  secondLabel.textContent = eventType === 'Exercise' ? 'Duration (min)' : 'End time';
+  const newSecondType = eventType === 'Exercise' ? 'number' : 'time';
+  if (secondInput.type !== newSecondType) {
+    // Only clear when the field genuinely changes kind (a duration number
+    // isn't a valid time value or vice versa) - switching between two
+    // non-Exercise types should NOT wipe an in-progress End time.
+    secondInput.value = '';
+  }
+  secondInput.type = newSecondType;
+  secondInput.placeholder = eventType === 'Exercise' ? '30' : '';
+  document.getElementById('itemInput').placeholder = eventType === 'Medication' ? 'e.g. Metformin 500mg' : 'Add an item...';
+  document.getElementById('saveBtn').style.background = TYPE_COLORS[eventType];
+  document.getElementById('saveBtn').textContent = (editingId !== null ? 'Update ' : 'Save ') + eventType;
+}
+
+function renderItemsChips() {
+  const wrap = document.getElementById('itemsChips');
+  wrap.innerHTML = '';
+  items.forEach((it, idx) => {
+    const chip = document.createElement('span');
+    chip.className = 'chip';
+    chip.innerHTML = '<span></span>';
+    chip.querySelector('span').textContent = it;
+    const btn = document.createElement('button');
+    btn.textContent = '×';
+    btn.onclick = () => { items.splice(idx,1); renderItemsChips(); saveDraft(); };
+    chip.appendChild(btn);
+    wrap.appendChild(chip);
+  });
+}
+
+function renderSuggestions() {
+  const val = document.getElementById('itemInput').value;
+  const phraseBox = document.getElementById('phraseSuggestions');
+  const matches = matchingPhrases(val);
+  if (matches.length > 0) {
+    phraseBox.innerHTML = '';
+    matches.forEach(p => {
+      const b = document.createElement('button');
+      b.textContent = p;
+      b.onclick = () => { document.getElementById('itemInput').value = p; phraseBox.style.display = 'none'; document.getElementById('itemInput').focus(); renderSuggestions(); };
+      phraseBox.appendChild(b);
+    });
+    phraseBox.style.display = 'block';
+  } else {
+    phraseBox.style.display = 'none';
+  }
+
+  const wordBox = document.getElementById('wordChips');
+  const words = nextWordSuggestions(val);
+  wordBox.innerHTML = '';
+  words.forEach(w => {
+    const b = document.createElement('button');
+    b.className = 'word-chip';
+    b.textContent = w;
+    b.style.borderColor = TYPE_COLORS[eventType];
+    b.style.color = TYPE_COLORS[eventType];
+    b.onclick = () => {
+      const inp = document.getElementById('itemInput');
+      inp.value = inp.value + w + ' ';
+      inp.focus();
+      renderSuggestions();
+    };
+    wordBox.appendChild(b);
+  });
+}
+
+function addItem() {
+  const inp = document.getElementById('itemInput');
+  const trimmed = inp.value.trim();
+  if (!trimmed) return;
+  items.push(trimmed);
+  learnFromItem(trimmed);
+  inp.value = '';
+  document.getElementById('phraseSuggestions').style.display = 'none';
+  document.getElementById('wordChips').innerHTML = '';
+  renderItemsChips();
+  inp.focus();
+  // Keep End time tracking "now" as the meal/event continues, unless the
+  // user has deliberately overridden it - this is the core fix for the
+  // "clock keeps drifting -> multiple breakfast entries" problem.
+  if (eventType !== 'Exercise' && !endTimeTouched && editingId === null) {
+    document.getElementById('secondInput').value = nowTimeStr();
+  }
+  saveDraft();
+}
+
+function saveEntry() {
+  const inp = document.getElementById('itemInput');
+  let finalItems = items.slice();
+  if (inp.value.trim()) {
+    finalItems.push(inp.value.trim());
+    learnFromItem(inp.value.trim());
+  }
+  if (finalItems.length === 0) return;
+
+  const timeVal = document.getElementById('timeInput').value || nowTimeStr();
+  const secondVal = document.getElementById('secondInput').value;
+
+  let entryData;
+  if (eventType === 'Exercise') {
+    entryData = {
+      type: eventType,
+      time: timeVal,                                  // time finished
+      startTime: null,
+      duration: secondVal || null,
+      items: finalItems,
+    };
+  } else {
+    const endTime = secondVal || nowTimeStr();         // anchor / logged moment
+    entryData = {
+      type: eventType,
+      time: endTime,
+      startTime: timeVal,                              // widen the window backward
+      duration: null,
+      items: finalItems,
+    };
+  }
+
+  if (!entriesByDate[currentDate]) entriesByDate[currentDate] = [];
+
+  if (editingId !== null) {
+    const list = entriesByDate[currentDate];
+    const idx = list.findIndex(e => e.id === editingId);
+    if (idx !== -1) {
+      list[idx] = { id: editingId, ...entryData };
+    } else {
+      // entry may have been on a different date originally; just add fresh
+      entriesByDate[currentDate].push({ id: editingId, ...entryData });
+    }
+    editingId = null;
+  } else {
+    entriesByDate[currentDate].push({ id: Date.now(), ...entryData });
+  }
+  saveEntries();
+
+  items = [];
+  inp.value = '';
+  document.getElementById('secondInput').value = '';
+  document.getElementById('timeInput').value = nowTimeStr();
+  endTimeTouched = false;
+  document.getElementById('editingBanner').style.display = 'none';
+  document.getElementById('cancelEditBtn').style.display = 'none';
+  renderFields(); // resets save button label back to "Save {type}"
+  renderItemsChips();
+  renderSuggestions();
+  renderEntryList();
+  clearDraft();
+  showStatus('Saved.', 'ok');
+}
+
+function startEdit(entry) {
+  editingId = entry.id;
+  eventType = entry.type;
+  items = entry.items.slice();
+  renderTypeRow();
+  renderFields();
+  if (entry.type === 'Exercise') {
+    document.getElementById('timeInput').value = entry.time;
+    document.getElementById('secondInput').value = entry.duration || '';
+  } else {
+    document.getElementById('timeInput').value = entry.startTime || entry.time;
+    document.getElementById('secondInput').value = entry.time;
+  }
+  endTimeTouched = true; // don't let editing an old entry drift its End time to "now"
+  document.getElementById('itemInput').value = '';
+  renderItemsChips();
+  renderSuggestions();
+  document.getElementById('editingBanner').style.display = 'block';
+  document.getElementById('cancelEditBtn').style.display = 'inline-block';
+  document.getElementById('saveBtn').textContent = 'Update ' + eventType;
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+  saveDraft();
+}
+
+function cancelEdit() {
+  editingId = null;
+  items = [];
+  endTimeTouched = false;
+  document.getElementById('itemInput').value = '';
+  document.getElementById('secondInput').value = '';
+  document.getElementById('timeInput').value = nowTimeStr();
+  renderItemsChips();
+  renderSuggestions();
+  document.getElementById('editingBanner').style.display = 'none';
+  document.getElementById('cancelEditBtn').style.display = 'none';
+  renderFields(); // resets save button label
+  clearDraft();
+}
+
+function deleteEntry(id) {
+  entriesByDate[currentDate] = (entriesByDate[currentDate] || []).filter(e => e.id !== id);
+  saveEntries();
+  renderEntryList();
+}
+
+function renderEntryList() {
+  const list = (entriesByDate[currentDate] || []).slice().sort((a,b) => a.time.localeCompare(b.time));
+  const heading = document.getElementById('listHeading');
+  heading.textContent = (currentDate === todayStr() ? 'Today' : currentDate) + ' (' + list.length + ')';
+
+  const wrap = document.getElementById('entryListWrap');
+  if (list.length === 0) {
+    wrap.innerHTML = '<p class="empty">No entries yet for this date.</p>';
+    return;
+  }
+  const ul = document.createElement('ul');
+  ul.id = 'entryList';
+  list.forEach(e => {
+    const li = document.createElement('li');
+    li.className = 'entry';
+    const left = document.createElement('div');
+    const meta = document.createElement('div');
+    meta.className = 'entry-meta';
+    const badge = document.createElement('span');
+    badge.className = 'type-badge';
+    badge.textContent = e.type;
+    badge.style.background = TYPE_COLORS[e.type] + '20';
+    badge.style.color = TYPE_COLORS[e.type];
+    meta.appendChild(badge);
+    const timeSpan = document.createElement('span');
+    timeSpan.className = 'entry-time';
+    timeSpan.textContent = to12Hour(e.time);
+    meta.appendChild(timeSpan);
+    if (e.duration) {
+      const d = document.createElement('span');
+      d.className = 'entry-extra'; d.textContent = '· ' + e.duration + ' min';
+      meta.appendChild(d);
+    }
+    if (e.startTime && e.startTime !== e.time) {
+      const s = document.createElement('span');
+      s.className = 'entry-extra'; s.textContent = '· from ' + to12Hour(e.startTime);
+      meta.appendChild(s);
+    }
+    left.appendChild(meta);
+    const itemsP = document.createElement('p');
+    itemsP.className = 'entry-items';
+    itemsP.textContent = e.items.join(', ');
+    left.appendChild(itemsP);
+    li.appendChild(left);
+    const actions = document.createElement('div');
+    actions.className = 'entry-actions';
+    const editBtn = document.createElement('button');
+    editBtn.className = 'edit-btn';
+    editBtn.textContent = 'Edit';
+    editBtn.onclick = () => startEdit(e);
+    actions.appendChild(editBtn);
+    const delBtn = document.createElement('button');
+    delBtn.className = 'delete-btn';
+    delBtn.textContent = '×';
+    delBtn.onclick = () => deleteEntry(e.id);
+    actions.appendChild(delBtn);
+    li.appendChild(actions);
+    ul.appendChild(li);
+  });
+  wrap.innerHTML = '';
+  wrap.appendChild(ul);
+}
+
+function buildExportText(forDate) {
+  const list = (entriesByDate[forDate] || []).slice().sort((a,b) => a.time.localeCompare(b.time));
+  return list.map(e => {
+    let itemsText = e.items.join(', ');
+    if (e.duration) itemsText += ', ' + e.duration + ' min';
+    if (e.startTime && e.startTime !== e.time) itemsText += ', Start at ' + to12Hour(e.startTime);
+    return e.type + ':\ntime: ' + to12Hour(e.time) + '\nitems: ' + itemsText;
+  }).join('\n\n') + '\n';
+}
+
+function downloadExportForDate(forDate) {
+  const list = entriesByDate[forDate] || [];
+  if (list.length === 0) return false;
+  const text = buildExportText(forDate);
+  const blob = new Blob([text], { type: 'text/plain' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = 'manual-' + forDate + '.txt';
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+  return true;
+}
+
+function downloadExport() {
+  const ok = downloadExportForDate(currentDate);
+  if (!ok) showStatus('No entries to export for this date.', 'error');
+}
+
+function downloadAllExports() {
+  const dates = Object.keys(entriesByDate).filter(d => (entriesByDate[d] || []).length > 0).sort();
+  if (dates.length === 0) { showStatus('No entries to export yet.', 'error'); return; }
+  // Stagger downloads slightly - some browsers block a burst of simultaneous
+  // downloads triggered by script, but are fine with them spaced out a bit.
+  dates.forEach((d, i) => {
+    setTimeout(() => downloadExportForDate(d), i * 400);
+  });
+  showStatus('Exporting ' + dates.length + ' day(s) - check your downloads.', 'ok');
+}
+
+function csvEscape(val) {
+  const s = String(val == null ? '' : val);
+  if (/[",\n]/.test(s)) return '"' + s.replace(/"/g, '""') + '"';
+  return s;
+}
+
+// Combine a "YYYY-MM-DD" date and "HH:MM" time into a full
+// "YYYY-MM-DD HH:MM:SS" string, matching parse_lingo_events.py's output format.
+function fullDateTime(dateStr, timeStr) {
+  return dateStr + ' ' + timeStr + ':00';
+}
+
+// Subtract N minutes from a "YYYY-MM-DD HH:MM" combo, returning a full
+// "YYYY-MM-DD HH:MM:SS" string - using real Date arithmetic (not string
+// slicing) so it correctly rolls back over a midnight boundary.
+function subtractMinutes(dateStr, timeStr, minutes) {
+  const d = new Date(dateStr + 'T' + timeStr + ':00');
+  d.setMinutes(d.getMinutes() - minutes);
+  const pad = n => String(n).padStart(2, '0');
+  return d.getFullYear() + '-' + pad(d.getMonth()+1) + '-' + pad(d.getDate()) + ' ' +
+         pad(d.getHours()) + ':' + pad(d.getMinutes()) + ':' + pad(d.getSeconds());
+}
+
+function buildEventsCSVRows() {
+  const rows = [];
+  Object.keys(entriesByDate).sort().forEach(date => {
+    (entriesByDate[date] || []).forEach(e => {
+      let startTime, endTime, duration;
+      if (e.type === 'Exercise') {
+        endTime = fullDateTime(date, e.time);
+        duration = e.duration || '';
+        startTime = e.duration ? subtractMinutes(date, e.time, parseFloat(e.duration)) : endTime;
+      } else {
+        endTime = fullDateTime(date, e.time);
+        startTime = fullDateTime(date, e.startTime || e.time);
+        duration = '';
+      }
+      rows.push({
+        Date: date,
+        EventType: e.type,
+        LingoScore: '',
+        Details: e.items.join(', '),
+        StartTime: startTime,
+        EndTime: endTime,
+        DurationMinutes: duration,
+        Sources: 'quick_logger',
+        Warnings: '',
+      });
+    });
+  });
+  rows.sort((a, b) => a.StartTime.localeCompare(b.StartTime));
+  return rows;
+}
+
+function downloadEventsCSV() {
+  const rows = buildEventsCSVRows();
+  if (rows.length === 0) { showStatus('No entries to export yet.', 'error'); return; }
+  const fields = ['Date','EventType','LingoScore','Details','StartTime','EndTime','DurationMinutes','Sources','Warnings'];
+  const csv = [fields.join(',')].concat(
+    rows.map(r => fields.map(f => csvEscape(r[f])).join(','))
+  ).join('\n') + '\n';
+  const blob = new Blob([csv], { type: 'text/csv' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  const lastDate = Object.keys(entriesByDate).filter(d => (entriesByDate[d]||[]).length > 0).sort().slice(-1)[0];
+  a.download = 'quicklog-events_' + lastDate + '.csv';
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
+
+function renderVocabList() {
+  const list = document.getElementById('vocabList');
+  const phrases = Object.entries(vocab.phrases).sort((a,b) => b[1]-a[1]);
+  if (phrases.length === 0) {
+    list.innerHTML = '<li style="justify-content:center;color:var(--text-faint);font-style:italic;">No remembered words yet.</li>';
+    return;
+  }
+  list.innerHTML = '';
+  phrases.forEach(([phrase, count]) => {
+    const li = document.createElement('li');
+    const label = document.createElement('span');
+    label.textContent = phrase;
+    const countSpan = document.createElement('span');
+    countSpan.className = 'vcount';
+    countSpan.textContent = '(' + count + ')';
+    label.appendChild(countSpan);
+    li.appendChild(label);
+    const delBtn = document.createElement('button');
+    delBtn.textContent = '×';
+    delBtn.onclick = () => deletePhrase(phrase);
+    li.appendChild(delBtn);
+    list.appendChild(li);
+  });
+}
+
+function deletePhrase(phrase) {
+  delete vocab.phrases[phrase];
+  // Also unwind the bigram counts this phrase contributed, so predictive
+  // chips don't keep suggesting words from a phrase you just removed.
+  const words = phrase.split(/\s+/).map(normWord).filter(Boolean);
+  for (let i = 0; i < words.length - 1; i++) {
+    const a = words[i], b = words[i+1];
+    if (vocab.bigram[a] && vocab.bigram[a][b]) {
+      vocab.bigram[a][b] -= 1;
+      if (vocab.bigram[a][b] <= 0) delete vocab.bigram[a][b];
+      if (Object.keys(vocab.bigram[a]).length === 0) delete vocab.bigram[a];
+    }
+  }
+  saveVocab();
+  renderVocabList();
+  showStatus('Removed "' + phrase + '" from remembered words.', 'ok');
+}
+
+function exportVocab() {
+  const text = JSON.stringify(vocab, null, 2);
+  const blob = new Blob([text], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = 'quicklog-words.json';
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
+
+function importVocab(file) {
+  const reader = new FileReader();
+  reader.onload = () => {
+    try {
+      const parsed = JSON.parse(reader.result);
+      if (!parsed || typeof parsed !== 'object' || !parsed.phrases || !parsed.bigram) {
+        showStatus('That file doesn\'t look like a words export (expected "phrases" and "bigram" keys).', 'error');
+        return;
+      }
+      vocab = parsed;
+      saveVocab();
+      renderVocabList();
+      showStatus('Words imported.', 'ok');
+    } catch (err) {
+      showStatus('Could not read that file - make sure it\'s valid JSON.', 'error');
+    }
+  };
+  reader.readAsText(file);
+}
+
+function resetAllData() {
+  if (!confirm('Erase all saved entries (every date)? Your remembered words are not affected. This cannot be undone.')) return;
+  entriesByDate = {};
+  saveEntries();
+  renderEntryList();
+  showStatus('All entries erased. Your remembered words were kept.', 'ok');
+}
+
+// ---- wire up events ----
+document.getElementById('dateInput').addEventListener('change', (e) => {
+  currentDate = e.target.value || todayStr();
+  renderEntryList();
+});
+document.getElementById('itemInput').addEventListener('input', () => { renderSuggestions(); saveDraft(); });
+document.getElementById('itemInput').addEventListener('keydown', (e) => {
+  if (e.key === 'Enter') { e.preventDefault(); addItem(); }
+});
+document.getElementById('timeInput').addEventListener('input', saveDraft);
+document.getElementById('secondInput').addEventListener('input', () => {
+  if (eventType !== 'Exercise') endTimeTouched = true;
+  saveDraft();
+});
+document.getElementById('addItemBtn').addEventListener('click', addItem);
+document.getElementById('saveBtn').addEventListener('click', saveEntry);
+document.getElementById('exportBtn').addEventListener('click', downloadExport);
+document.getElementById('exportAllBtn').addEventListener('click', downloadAllExports);
+document.getElementById('exportCsvBtn').addEventListener('click', downloadEventsCSV);
+document.getElementById('resetBtn').addEventListener('click', resetAllData);
+document.getElementById('cancelEditBtn').addEventListener('click', cancelEdit);
+document.getElementById('manageWordsBtn').addEventListener('click', () => {
+  const panel = document.getElementById('vocabPanel');
+  const showing = panel.style.display !== 'none';
+  panel.style.display = showing ? 'none' : 'block';
+  if (!showing) renderVocabList();
+});
+document.getElementById('exportVocabBtn').addEventListener('click', exportVocab);
+document.getElementById('importVocabInput').addEventListener('change', (e) => {
+  if (e.target.files && e.target.files[0]) {
+    importVocab(e.target.files[0]);
+    e.target.value = '';
+  }
+});
+
+// ---- init ----
+load();
+const draft = loadDraft();
+if (draft && draft.currentDate) {
+  currentDate = draft.currentDate;
+  eventType = draft.eventType || 'Breakfast';
+  items = draft.items || [];
+  editingId = draft.editingId || null;
+  endTimeTouched = draft.endTimeTouched || false;
+}
+document.getElementById('dateInput').value = currentDate;
+document.getElementById('timeInput').value = (draft && draft.time) || nowTimeStr();
+renderTypeRow();
+renderFields();
+if (draft) {
+  document.getElementById('secondInput').value = draft.secondInput || '';
+  document.getElementById('itemInput').value = draft.itemInput || '';
+  if (editingId !== null) {
+    document.getElementById('editingBanner').style.display = 'block';
+    document.getElementById('cancelEditBtn').style.display = 'inline-block';
+  }
+}
+renderItemsChips();
+renderSuggestions();
+renderEntryList();
+</script>
+</body>
+</html>
