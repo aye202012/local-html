@@ -1,0 +1,674 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>Planting Log</title>
+<style>
+  :root {
+    --bg: #f6f7f2;
+    --card: #ffffff;
+    --border: #e2e5d8;
+    --text: #2a2e22;
+    --text-dim: #6b7060;
+    --text-faint: #a3a896;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; background: var(--bg); color: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    padding-bottom: 40px;
+  }
+  .wrap { max-width: 480px; margin: 0 auto; padding: 20px 16px; }
+  header { display: flex; align-items: baseline; justify-content: space-between; margin-bottom: 18px; }
+  h1 { font-size: 22px; font-weight: 700; margin: 0; letter-spacing: -0.01em; }
+  #dateInput { font-size: 14px; color: var(--text-dim); background: none; border: none; border-bottom: 1px solid var(--border); padding: 4px 0; }
+  .card { background: var(--card); border: 1px solid var(--border); border-radius: 16px; padding: 16px; margin-bottom: 20px; box-shadow: 0 1px 2px rgba(0,0,0,0.03); }
+  label.field-label { display: block; font-size: 12px; color: var(--text-dim); margin-bottom: 6px; font-weight: 600; }
+  .pill-row { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 10px; }
+  .pill { flex-shrink: 0; padding: 7px 14px; border-radius: 999px; font-size: 14px; font-weight: 500; border: 1px solid var(--border); background: #fafbf6; color: var(--text-dim); cursor: pointer; }
+  .pill.active { background: #5b8c3a; color: #fff; border-color: #5b8c3a; }
+  .crop-input-wrap { position: relative; margin-bottom: 16px; }
+  #cropInput { width: 100%; border: 1px solid var(--border); border-radius: 10px; padding: 9px 11px; font-size: 15px; }
+  .type-row { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 14px; }
+  .type-pill { padding: 8px 14px; border-radius: 999px; font-size: 14px; font-weight: 500; border: none; background: #f2f3ec; color: var(--text-dim); cursor: pointer; }
+  .type-pill.active { color: #fff; }
+  .suggestions { position: absolute; z-index: 10; left: 0; right: 0; top: 100%; margin-top: 4px; background: #fff; border: 1px solid var(--border); border-radius: 10px; box-shadow: 0 4px 12px rgba(0,0,0,0.08); overflow: hidden; display: none; }
+  .suggestions button { display: block; width: 100%; text-align: left; padding: 9px 12px; border: none; background: none; font-size: 14px; color: var(--text-dim); border-bottom: 1px solid #f2f1ee; cursor: pointer; }
+  .suggestions button:last-child { border-bottom: none; }
+  .suggestions button:hover { background: #faf9f7; }
+  .note-input-wrap { position: relative; margin-bottom: 6px; }
+  #noteInput { width: 100%; border: 1px solid var(--border); border-radius: 10px; padding: 10px 12px; font-size: 15px; }
+  .word-chips { display: flex; flex-wrap: wrap; gap: 6px; margin: 8px 0 4px; }
+  .word-chip { font-size: 12px; padding: 5px 10px; border-radius: 999px; background: #fff; border: 1px solid; cursor: pointer; }
+  .btn-row { display: flex; gap: 8px; margin-top: 10px; }
+  .btn { flex: 1; padding: 11px; border-radius: 10px; font-size: 15px; font-weight: 700; border: none; background: #5b8c3a; color: #fff; cursor: pointer; }
+  .btn:disabled { opacity: 0.4; }
+  #cancelEditBtn { display: none; font-size: 12px; color: var(--text-dim); background: none; border: none; text-decoration: underline; cursor: pointer; margin-bottom: 10px; }
+  .editing-banner { display: none; font-size: 12px; font-weight: 600; color: #a8542f; background: #fdf3ea; border: 1px solid #f3d9bd; border-radius: 8px; padding: 6px 10px; margin-bottom: 10px; }
+  .section-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; }
+  .section-head h2 { font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em; color: var(--text-dim); margin: 0; }
+  #exportBtn { font-size: 12px; font-weight: 600; color: var(--text-dim); text-decoration: underline; background: none; border: none; cursor: pointer; }
+  .empty { color: var(--text-faint); font-size: 14px; text-align: center; padding: 24px 0; font-style: italic; }
+  ul.entry-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
+  .entry { background: #fff; border: 1px solid var(--border); border-radius: 12px; padding: 10px 12px; display: flex; justify-content: space-between; gap: 8px; }
+  .entry-meta { display: flex; align-items: center; gap: 6px; margin-bottom: 3px; flex-wrap: wrap; }
+  .type-badge { font-size: 11px; font-weight: 700; padding: 2px 7px; border-radius: 5px; }
+  .entry-crop { font-size: 12px; color: var(--text-faint); }
+  .entry-note { font-size: 14px; color: var(--text); margin: 0; }
+  .entry-actions { display: flex; flex-direction: column; align-items: flex-end; gap: 6px; flex-shrink: 0; }
+  .edit-btn { border: none; background: none; color: var(--text-faint); font-size: 12px; font-weight: 600; cursor: pointer; padding: 0; }
+  .delete-btn { border: none; background: none; color: #cdb9c7; font-size: 16px; cursor: pointer; padding: 0; }
+  #resetBtn { font-size: 12px; color: var(--text-faint); background: none; border: none; margin-top: 16px; cursor: pointer; }
+  .mgmt-section { margin-top: 18px; padding-top: 14px; border-top: 1px solid var(--border); }
+  .mgmt-toggle { font-size: 12px; font-weight: 600; color: var(--text-dim); background: none; border: none; text-decoration: underline; cursor: pointer; padding: 0; margin-right: 16px; }
+  .mgmt-panel { margin-top: 10px; }
+  .mgmt-actions { display: flex; gap: 14px; margin-bottom: 10px; }
+  .mgmt-actions button, .mgmt-actions label { font-size: 12px; font-weight: 600; color: var(--text-dim); background: #f2f3ec; border: none; border-radius: 8px; padding: 6px 10px; cursor: pointer; display: inline-block; }
+  ul.mgmt-list { list-style: none; margin: 0; padding: 0; max-height: 260px; overflow-y: auto; }
+  ul.mgmt-list li { display: flex; align-items: center; gap: 8px; padding: 6px 4px; border-bottom: 1px solid #f2f1ee; font-size: 13px; }
+  ul.mgmt-list li input[type=text] { flex: 1; border: 1px solid var(--border); border-radius: 6px; padding: 4px 6px; font-size: 13px; }
+  ul.mgmt-list li span.vcount { color: var(--text-faint); }
+  ul.mgmt-list li button { border: none; background: none; font-size: 12px; font-weight: 600; color: var(--text-dim); cursor: pointer; }
+  ul.mgmt-list li button.del { color: #cdb9c7; }
+  #statusMsg { font-size: 12px; padding: 8px 12px; border-radius: 8px; margin-bottom: 16px; display: none; }
+  #statusMsg.error { display: block; background: #fef2f2; color: #b91c1c; border: 1px solid #fecaca; }
+  #statusMsg.ok { display: block; background: #f0fdf4; color: #15803d; border: 1px solid #bbf7d0; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>Planting Log</h1>
+    <input type="date" id="dateInput">
+  </header>
+
+  <div id="statusMsg"></div>
+
+  <div class="card">
+    <div class="editing-banner" id="editingBanner">Editing entry — Update to save changes</div>
+    <button id="cancelEditBtn">Cancel edit</button>
+
+    <label class="field-label">Crop (leave blank for a general garden note)</label>
+    <div class="pill-row" id="cropPillRow"></div>
+    <div class="crop-input-wrap">
+      <input type="text" id="cropInput" placeholder="Type a crop name, or leave blank...">
+      <div class="suggestions" id="cropSuggestions"></div>
+    </div>
+
+    <label class="field-label">Event type</label>
+    <div class="type-row" id="typeRow"></div>
+
+    <label class="field-label">Note</label>
+    <div class="note-input-wrap">
+      <input type="text" id="noteInput" placeholder="e.g. Fertilized with fish emulsion">
+      <div class="suggestions" id="noteSuggestions"></div>
+    </div>
+    <div class="word-chips" id="wordChips"></div>
+
+    <div class="btn-row">
+      <button class="btn" id="saveBtn">Save entry</button>
+    </div>
+  </div>
+
+  <div class="section-head">
+    <h2 id="listHeading">Today</h2>
+    <button id="exportBtn">Export all as CSV</button>
+  </div>
+  <div id="entryListWrap"></div>
+
+  <button id="resetBtn">Erase all entries</button>
+
+  <div class="mgmt-section">
+    <button class="mgmt-toggle" id="manageCropsBtn">Manage crop names</button>
+    <button class="mgmt-toggle" id="manageWordsBtn">Manage remembered notes</button>
+
+    <div class="mgmt-panel" id="cropPanel" style="display:none;">
+      <ul class="mgmt-list" id="cropList"></ul>
+    </div>
+
+    <div class="mgmt-panel" id="vocabPanel" style="display:none;">
+      <div class="mgmt-actions">
+        <button id="exportVocabBtn">Export notes (.json)</button>
+        <label id="importVocabLabel">Import notes (.json)
+          <input type="file" id="importVocabInput" accept="application/json,.json" style="display:none;">
+        </label>
+      </div>
+      <ul class="mgmt-list" id="vocabList"></ul>
+    </div>
+  </div>
+</div>
+
+<script>
+const EVENT_TYPES = ['Sow Seeds', 'Transplant', 'Maintain', 'Other'];
+const TYPE_COLORS = {
+  'Sow Seeds': '#5b8c3a',
+  'Transplant': '#3f7d8c',
+  'Maintain': '#b8863f',
+  'Other': '#8a5a7a',
+};
+
+let entriesByDate = {};
+let crops = {};              // crop name -> usage count
+let vocab = { phrases: {}, bigram: {} }; // note text prediction
+let currentDate = todayStr();
+let eventType = 'Sow Seeds';
+let editingId = null;
+
+function todayStr() {
+  const d = new Date();
+  return d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
+}
+function normWord(w) { return w.toLowerCase().replace(/[.,!?;:]+$/, ''); }
+
+function showStatus(msg, kind) {
+  const el = document.getElementById('statusMsg');
+  el.textContent = msg;
+  el.className = kind;
+  if (kind === 'ok') setTimeout(() => { el.className = ''; }, 1500);
+}
+
+// ---- persistence ----
+function load() {
+  try {
+    const e = localStorage.getItem('planting_entries');
+    const c = localStorage.getItem('planting_crops');
+    const v = localStorage.getItem('planting_vocab');
+    if (e) entriesByDate = JSON.parse(e);
+    if (c) crops = JSON.parse(c);
+    if (v) vocab = JSON.parse(v);
+  } catch (err) {
+    showStatus('Could not load saved data - starting fresh.', 'error');
+  }
+}
+function saveEntries() {
+  try { localStorage.setItem('planting_entries', JSON.stringify(entriesByDate)); }
+  catch (err) { showStatus('Could not save - storage may be full or blocked.', 'error'); }
+}
+function saveCrops() {
+  try { localStorage.setItem('planting_crops', JSON.stringify(crops)); }
+  catch (err) { showStatus('Could not save crop list.', 'error'); }
+}
+function saveVocab() {
+  try { localStorage.setItem('planting_vocab', JSON.stringify(vocab)); }
+  catch (err) { showStatus('Could not save remembered notes.', 'error'); }
+}
+function saveDraft() {
+  try {
+    const draft = {
+      currentDate, eventType, editingId,
+      crop: document.getElementById('cropInput').value,
+      note: document.getElementById('noteInput').value,
+    };
+    localStorage.setItem('planting_draft', JSON.stringify(draft));
+  } catch (err) { /* best effort */ }
+}
+function loadDraft() {
+  try { const raw = localStorage.getItem('planting_draft'); return raw ? JSON.parse(raw) : null; }
+  catch (err) { return null; }
+}
+function clearDraft() {
+  try { localStorage.removeItem('planting_draft'); } catch (err) {}
+}
+
+// ---- crop pills + autocomplete ----
+function matchingCrops(prefix) {
+  if (!prefix.trim()) return [];
+  const p = prefix.toLowerCase();
+  return Object.entries(crops)
+    .filter(([name]) => name.toLowerCase().startsWith(p) && name.toLowerCase() !== p)
+    .sort((a,b) => b[1]-a[1]).map(([name]) => name);
+}
+function renderCropSuggestions() {
+  const val = document.getElementById('cropInput').value;
+  const box = document.getElementById('cropSuggestions');
+  const matches = matchingCrops(val);
+  if (matches.length > 0) {
+    box.innerHTML = '';
+    matches.forEach(name => {
+      const b = document.createElement('button');
+      b.textContent = name;
+      b.onclick = () => { document.getElementById('cropInput').value = name; box.style.display = 'none'; renderCropPills(); saveDraft(); };
+      box.appendChild(b);
+    });
+    box.style.display = 'block';
+  } else {
+    box.style.display = 'none';
+  }
+}
+function renderCropPills() {
+  const row = document.getElementById('cropPillRow');
+  const active = document.getElementById('cropInput').value.trim();
+  const sorted = Object.entries(crops).sort((a,b) => b[1]-a[1]).map(([name]) => name);
+  row.innerHTML = '';
+  sorted.forEach(name => {
+    const btn = document.createElement('button');
+    btn.className = 'pill' + (name === active ? ' active' : '');
+    btn.textContent = name;
+    btn.onclick = () => {
+      const cur = document.getElementById('cropInput').value.trim();
+      document.getElementById('cropInput').value = (cur === name) ? '' : name; // tap again to clear (general note)
+      renderCropPills(); saveDraft();
+    };
+    row.appendChild(btn);
+  });
+}
+
+// ---- event type pills ----
+function renderTypeRow() {
+  const row = document.getElementById('typeRow');
+  row.innerHTML = '';
+  EVENT_TYPES.forEach(t => {
+    const btn = document.createElement('button');
+    btn.className = 'type-pill' + (t === eventType ? ' active' : '');
+    btn.textContent = t;
+    btn.style.background = t === eventType ? TYPE_COLORS[t] : '#f2f3ec';
+    btn.onclick = () => { eventType = t; renderTypeRow(); saveDraft(); };
+    row.appendChild(btn);
+  });
+}
+
+// ---- note autocomplete + word prediction (same model as quick_logger) ----
+function learnFromNote(text) {
+  const trimmed = text.trim();
+  if (!trimmed) return;
+  vocab.phrases[trimmed] = (vocab.phrases[trimmed] || 0) + 1;
+  const words = trimmed.split(/\s+/).map(normWord).filter(Boolean);
+  for (let i = 0; i < words.length - 1; i++) {
+    const a = words[i], b = words[i+1];
+    if (!vocab.bigram[a]) vocab.bigram[a] = {};
+    vocab.bigram[a][b] = (vocab.bigram[a][b] || 0) + 1;
+  }
+  saveVocab();
+}
+function matchingPhrases(prefix) {
+  if (!prefix.trim()) return [];
+  const p = prefix.toLowerCase();
+  return Object.entries(vocab.phrases)
+    .filter(([phrase]) => phrase.toLowerCase().startsWith(p) && phrase.toLowerCase() !== p)
+    .sort((a,b) => b[1]-a[1]).slice(0,5).map(([phrase]) => phrase);
+}
+function nextWordSuggestions(val) {
+  if (!val.endsWith(' ') && val.length > 0) return [];
+  const words = val.trim().split(/\s+/).map(normWord).filter(Boolean);
+  if (words.length === 0) return [];
+  const last = words[words.length-1];
+  const followers = vocab.bigram[last];
+  if (!followers) return [];
+  return Object.entries(followers).sort((a,b) => b[1]-a[1]).slice(0,4).map(([w]) => w);
+}
+function renderNoteSuggestions() {
+  const val = document.getElementById('noteInput').value;
+  const box = document.getElementById('noteSuggestions');
+  const matches = matchingPhrases(val);
+  if (matches.length > 0) {
+    box.innerHTML = '';
+    matches.forEach(p => {
+      const b = document.createElement('button');
+      b.textContent = p;
+      b.onclick = () => { document.getElementById('noteInput').value = p; box.style.display = 'none'; document.getElementById('noteInput').focus(); renderNoteSuggestions(); saveDraft(); };
+      box.appendChild(b);
+    });
+    box.style.display = 'block';
+  } else {
+    box.style.display = 'none';
+  }
+
+  const wordBox = document.getElementById('wordChips');
+  const words = nextWordSuggestions(val);
+  wordBox.innerHTML = '';
+  words.forEach(w => {
+    const b = document.createElement('button');
+    b.className = 'word-chip';
+    b.textContent = w;
+    b.style.borderColor = TYPE_COLORS[eventType];
+    b.style.color = TYPE_COLORS[eventType];
+    b.onclick = () => {
+      const inp = document.getElementById('noteInput');
+      inp.value = inp.value + w + ' ';
+      inp.focus();
+      renderNoteSuggestions();
+      saveDraft();
+    };
+    wordBox.appendChild(b);
+  });
+}
+
+// ---- save / edit ----
+function saveEntry() {
+  const cropName = document.getElementById('cropInput').value.trim();
+  const note = document.getElementById('noteInput').value.trim();
+  if (!note) { showStatus('Enter a note first.', 'error'); return; }
+
+  if (cropName) {
+    crops[cropName] = (crops[cropName] || 0) + 1;
+    saveCrops();
+  }
+  learnFromNote(note);
+
+  const entryData = { crop: cropName || null, type: eventType, note: note };
+
+  if (!entriesByDate[currentDate]) entriesByDate[currentDate] = [];
+
+  if (editingId !== null) {
+    const list = entriesByDate[currentDate];
+    const idx = list.findIndex(e => e.id === editingId);
+    if (idx !== -1) list[idx] = { id: editingId, ...entryData };
+    else entriesByDate[currentDate].push({ id: editingId, ...entryData });
+    editingId = null;
+    document.getElementById('editingBanner').style.display = 'none';
+    document.getElementById('cancelEditBtn').style.display = 'none';
+    document.getElementById('saveBtn').textContent = 'Save entry';
+  } else {
+    entriesByDate[currentDate].push({ id: Date.now() + Math.random(), ...entryData });
+  }
+  saveEntries();
+
+  document.getElementById('noteInput').value = '';
+  renderCropPills();
+  renderNoteSuggestions();
+  renderEntryList();
+  clearDraft();
+  showStatus('Saved.', 'ok');
+}
+
+function startEdit(entry) {
+  editingId = entry.id;
+  document.getElementById('cropInput').value = entry.crop || '';
+  eventType = entry.type;
+  document.getElementById('noteInput').value = entry.note;
+  renderTypeRow();
+  renderCropPills();
+  renderNoteSuggestions();
+  document.getElementById('editingBanner').style.display = 'block';
+  document.getElementById('cancelEditBtn').style.display = 'inline-block';
+  document.getElementById('saveBtn').textContent = 'Update entry';
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+  saveDraft();
+}
+function cancelEdit() {
+  editingId = null;
+  document.getElementById('cropInput').value = '';
+  document.getElementById('noteInput').value = '';
+  renderCropPills();
+  renderNoteSuggestions();
+  document.getElementById('editingBanner').style.display = 'none';
+  document.getElementById('cancelEditBtn').style.display = 'none';
+  document.getElementById('saveBtn').textContent = 'Save entry';
+  clearDraft();
+}
+function deleteEntry(id) {
+  entriesByDate[currentDate] = (entriesByDate[currentDate] || []).filter(e => e.id !== id);
+  saveEntries();
+  renderEntryList();
+}
+
+// ---- render entry list ----
+function renderEntryList() {
+  const list = (entriesByDate[currentDate] || []).slice();
+  const heading = document.getElementById('listHeading');
+  heading.textContent = (currentDate === todayStr() ? 'Today' : currentDate) + ' (' + list.length + ')';
+
+  const wrap = document.getElementById('entryListWrap');
+  if (list.length === 0) {
+    wrap.innerHTML = '<p class="empty">No entries yet for this date.</p>';
+    return;
+  }
+  const ul = document.createElement('ul');
+  ul.className = 'entry-list';
+  list.forEach(e => {
+    const li = document.createElement('li');
+    li.className = 'entry';
+    const left = document.createElement('div');
+    const meta = document.createElement('div');
+    meta.className = 'entry-meta';
+    const badge = document.createElement('span');
+    badge.className = 'type-badge';
+    badge.textContent = e.type;
+    badge.style.background = TYPE_COLORS[e.type] + '22';
+    badge.style.color = TYPE_COLORS[e.type];
+    meta.appendChild(badge);
+    const cropSpan = document.createElement('span');
+    cropSpan.className = 'entry-crop';
+    cropSpan.textContent = e.crop || 'General';
+    meta.appendChild(cropSpan);
+    left.appendChild(meta);
+    const noteP = document.createElement('p');
+    noteP.className = 'entry-note';
+    noteP.textContent = e.note;
+    left.appendChild(noteP);
+    li.appendChild(left);
+    const actions = document.createElement('div');
+    actions.className = 'entry-actions';
+    const editBtn = document.createElement('button');
+    editBtn.className = 'edit-btn'; editBtn.textContent = 'Edit';
+    editBtn.onclick = () => startEdit(e);
+    actions.appendChild(editBtn);
+    const delBtn = document.createElement('button');
+    delBtn.className = 'delete-btn'; delBtn.textContent = '×';
+    delBtn.onclick = () => deleteEntry(e.id);
+    actions.appendChild(delBtn);
+    li.appendChild(actions);
+    ul.appendChild(li);
+  });
+  wrap.innerHTML = '';
+  wrap.appendChild(ul);
+}
+
+// ---- CSV export (all dates) ----
+function csvEscape(val) {
+  const s = String(val);
+  if (/[",\n]/.test(s)) return '"' + s.replace(/"/g, '""') + '"';
+  return s;
+}
+function downloadCSV() {
+  const rows = [['Date','Crop','EventType','Note']];
+  const dates = Object.keys(entriesByDate).sort();
+  let any = false;
+  dates.forEach(date => {
+    (entriesByDate[date] || []).forEach(e => {
+      rows.push([date, e.crop || '', e.type, e.note]);
+      any = true;
+    });
+  });
+  if (!any) { showStatus('No entries to export yet.', 'error'); return; }
+  const csv = rows.map(r => r.map(csvEscape).join(',')).join('\n') + '\n';
+  const blob = new Blob([csv], { type: 'text/csv' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  const lastDate = dates[dates.length - 1];
+  a.download = 'planting-log-' + lastDate + '.csv';
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
+
+// ---- reset (entries only) ----
+function resetAllData() {
+  if (!confirm('Erase all saved planting entries (every date)? Your crop list and remembered notes are not affected. This cannot be undone.')) return;
+  entriesByDate = {};
+  saveEntries();
+  renderEntryList();
+  showStatus('All entries erased. Crops and remembered notes were kept.', 'ok');
+}
+
+// ---- crop management ----
+function renderCropManageList() {
+  const list = document.getElementById('cropList');
+  const names = Object.entries(crops).sort((a,b) => b[1]-a[1]);
+  if (names.length === 0) {
+    list.innerHTML = '<li style="justify-content:center;color:var(--text-faint);font-style:italic;">No crops yet.</li>';
+    return;
+  }
+  list.innerHTML = '';
+  names.forEach(([name, count]) => {
+    const li = document.createElement('li');
+    const input = document.createElement('input');
+    input.type = 'text'; input.value = name;
+    li.appendChild(input);
+    const countSpan = document.createElement('span');
+    countSpan.className = 'vcount'; countSpan.textContent = '(' + count + ')';
+    li.appendChild(countSpan);
+    const renameBtn = document.createElement('button');
+    renameBtn.textContent = 'Rename';
+    renameBtn.onclick = () => renameCrop(name, input.value.trim());
+    li.appendChild(renameBtn);
+    const delBtn = document.createElement('button');
+    delBtn.className = 'del'; delBtn.textContent = 'Delete';
+    delBtn.onclick = () => deleteCrop(name);
+    li.appendChild(delBtn);
+    list.appendChild(li);
+  });
+}
+function renameCrop(oldName, newName) {
+  if (!newName || newName === oldName) return;
+  const count = crops[oldName] || 0;
+  delete crops[oldName];
+  crops[newName] = (crops[newName] || 0) + count;
+  saveCrops();
+  Object.keys(entriesByDate).forEach(date => {
+    entriesByDate[date].forEach(e => { if (e.crop === oldName) e.crop = newName; });
+  });
+  saveEntries();
+  renderCropManageList();
+  renderCropPills();
+  renderEntryList();
+  showStatus('Renamed "' + oldName + '" to "' + newName + '" (including past entries).', 'ok');
+}
+function deleteCrop(name) {
+  if (!confirm('Remove "' + name + '" from your crop list? Existing entries logged under this name are kept as-is.')) return;
+  delete crops[name];
+  saveCrops();
+  renderCropManageList();
+  renderCropPills();
+  showStatus('Removed "' + name + '" from crop list.', 'ok');
+}
+
+// ---- vocab (remembered notes) management ----
+function renderVocabList() {
+  const list = document.getElementById('vocabList');
+  const phrases = Object.entries(vocab.phrases).sort((a,b) => b[1]-a[1]);
+  if (phrases.length === 0) {
+    list.innerHTML = '<li style="justify-content:center;color:var(--text-faint);font-style:italic;">No remembered notes yet.</li>';
+    return;
+  }
+  list.innerHTML = '';
+  phrases.forEach(([phrase, count]) => {
+    const li = document.createElement('li');
+    const label = document.createElement('span');
+    label.style.flex = '1';
+    label.textContent = phrase;
+    const countSpan = document.createElement('span');
+    countSpan.className = 'vcount'; countSpan.textContent = '(' + count + ')';
+    label.appendChild(countSpan);
+    li.appendChild(label);
+    const delBtn = document.createElement('button');
+    delBtn.className = 'del'; delBtn.textContent = '×';
+    delBtn.onclick = () => deletePhrase(phrase);
+    li.appendChild(delBtn);
+    list.appendChild(li);
+  });
+}
+function deletePhrase(phrase) {
+  delete vocab.phrases[phrase];
+  const words = phrase.split(/\s+/).map(normWord).filter(Boolean);
+  for (let i = 0; i < words.length - 1; i++) {
+    const a = words[i], b = words[i+1];
+    if (vocab.bigram[a] && vocab.bigram[a][b]) {
+      vocab.bigram[a][b] -= 1;
+      if (vocab.bigram[a][b] <= 0) delete vocab.bigram[a][b];
+      if (Object.keys(vocab.bigram[a]).length === 0) delete vocab.bigram[a];
+    }
+  }
+  saveVocab();
+  renderVocabList();
+  showStatus('Removed "' + phrase + '" from remembered notes.', 'ok');
+}
+function exportVocab() {
+  const text = JSON.stringify(vocab, null, 2);
+  const blob = new Blob([text], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = 'planting-log-notes.json';
+  document.body.appendChild(a); a.click(); document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
+function importVocab(file) {
+  const reader = new FileReader();
+  reader.onload = () => {
+    try {
+      const parsed = JSON.parse(reader.result);
+      if (!parsed || typeof parsed !== 'object' || !parsed.phrases || !parsed.bigram) {
+        showStatus('That file doesn\'t look like a notes export (expected "phrases" and "bigram" keys).', 'error');
+        return;
+      }
+      vocab = parsed;
+      saveVocab();
+      renderVocabList();
+      showStatus('Notes imported.', 'ok');
+    } catch (err) {
+      showStatus('Could not read that file - make sure it\'s valid JSON.', 'error');
+    }
+  };
+  reader.readAsText(file);
+}
+
+// ---- wire up events ----
+document.getElementById('dateInput').addEventListener('change', (e) => {
+  currentDate = e.target.value || todayStr();
+  renderEntryList();
+  saveDraft();
+});
+document.getElementById('cropInput').addEventListener('input', () => { renderCropSuggestions(); renderCropPills(); saveDraft(); });
+document.getElementById('noteInput').addEventListener('input', () => { renderNoteSuggestions(); saveDraft(); });
+document.getElementById('noteInput').addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); saveEntry(); } });
+document.getElementById('saveBtn').addEventListener('click', saveEntry);
+document.getElementById('cancelEditBtn').addEventListener('click', cancelEdit);
+document.getElementById('exportBtn').addEventListener('click', downloadCSV);
+document.getElementById('resetBtn').addEventListener('click', resetAllData);
+document.getElementById('manageCropsBtn').addEventListener('click', () => {
+  const panel = document.getElementById('cropPanel');
+  document.getElementById('vocabPanel').style.display = 'none';
+  const showing = panel.style.display !== 'none';
+  panel.style.display = showing ? 'none' : 'block';
+  if (!showing) renderCropManageList();
+});
+document.getElementById('manageWordsBtn').addEventListener('click', () => {
+  const panel = document.getElementById('vocabPanel');
+  document.getElementById('cropPanel').style.display = 'none';
+  const showing = panel.style.display !== 'none';
+  panel.style.display = showing ? 'none' : 'block';
+  if (!showing) renderVocabList();
+});
+document.getElementById('exportVocabBtn').addEventListener('click', exportVocab);
+document.getElementById('importVocabInput').addEventListener('change', (e) => {
+  if (e.target.files && e.target.files[0]) { importVocab(e.target.files[0]); e.target.value = ''; }
+});
+
+// ---- init ----
+load();
+const draft = loadDraft();
+if (draft) {
+  currentDate = draft.currentDate || todayStr();
+  eventType = draft.eventType || 'Sow Seeds';
+  editingId = draft.editingId ?? null;
+}
+document.getElementById('dateInput').value = currentDate;
+renderTypeRow();
+if (draft) {
+  document.getElementById('cropInput').value = draft.crop || '';
+  document.getElementById('noteInput').value = draft.note || '';
+  if (editingId !== null) {
+    document.getElementById('editingBanner').style.display = 'block';
+    document.getElementById('cancelEditBtn').style.display = 'inline-block';
+    document.getElementById('saveBtn').textContent = 'Update entry';
+  }
+}
+renderCropPills();
+renderNoteSuggestions();
+renderEntryList();
+</script>
+</body>
+</html>
