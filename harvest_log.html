@@ -125,6 +125,8 @@
   .crop-mgmt { margin-top: 18px; padding-top: 14px; border-top: 1px solid var(--border); }
   #manageCropsBtn { font-size: 12px; font-weight: 600; color: var(--text-dim); background: none; border: none; text-decoration: underline; cursor: pointer; padding: 0; }
   #cropPanel { margin-top: 10px; }
+  .crop-actions { display: flex; gap: 14px; margin-bottom: 10px; }
+  .crop-actions button, .crop-actions label { font-size: 12px; font-weight: 600; color: var(--text-dim); background: #f2f3ec; border: none; border-radius: 8px; padding: 6px 10px; cursor: pointer; display: inline-block; }
   ul#cropList { list-style: none; margin: 0; padding: 0; }
   ul#cropList li { display: flex; align-items: center; gap: 8px; padding: 6px 0; border-bottom: 1px solid #f2f1ee; font-size: 13px; }
   ul#cropList li input[type=text] { flex: 1; border: 1px solid var(--border); border-radius: 6px; padding: 4px 6px; font-size: 13px; }
@@ -214,6 +216,12 @@
   <div class="crop-mgmt">
     <button id="manageCropsBtn">Manage crop names</button>
     <div id="cropPanel" style="display:none;">
+      <div class="crop-actions">
+        <button id="exportCropsBtn">Export crops (.json)</button>
+        <label id="importCropsLabel">Import crops (.json)
+          <input type="file" id="importCropsInput" accept="application/json,.json" style="display:none;">
+        </label>
+      </div>
       <ul id="cropList"></ul>
     </div>
   </div>
@@ -644,6 +652,47 @@ document.getElementById('saveBtn').addEventListener('click', saveEntry);
 document.getElementById('cancelEditBtn').addEventListener('click', cancelEdit);
 document.getElementById('exportBtn').addEventListener('click', downloadCSV);
 document.getElementById('resetBtn').addEventListener('click', resetAllData);
+// ---- crop list export / import (moves the crop pills between devices) ----
+function exportCrops() {
+  const text = JSON.stringify(crops, null, 2);
+  const blob = new Blob([text], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = 'harvest-log-crops.json';
+  document.body.appendChild(a); a.click(); document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
+function importCrops(file) {
+  const reader = new FileReader();
+  reader.onload = () => {
+    try {
+      const parsed = JSON.parse(reader.result);
+      if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) {
+        showStatus('That file doesn\'t look like a crops export (expected {"Crop name": count, ...}).', 'error');
+        return;
+      }
+      let added = 0;
+      for (const [rawName, rawCount] of Object.entries(parsed)) {
+        const name = String(rawName).trim();
+        const count = Math.max(1, Math.floor(Number(rawCount)) || 1);
+        if (!name) continue;
+        if (!(name in crops)) added++;
+        crops[name] = Math.max(crops[name] || 0, count);  // merge, never lower an existing count
+      }
+      saveCrops();
+      renderCropManageList();
+      renderCropPills();
+      showStatus('Crops imported: ' + added + ' new, ' + Object.keys(crops).length + ' total.', 'ok');
+    } catch (err) {
+      showStatus('Could not read that file - make sure it\'s valid JSON.', 'error');
+    }
+  };
+  reader.readAsText(file);
+}
+document.getElementById('exportCropsBtn').addEventListener('click', exportCrops);
+document.getElementById('importCropsInput').addEventListener('change', (e) => {
+  if (e.target.files && e.target.files[0]) { importCrops(e.target.files[0]); e.target.value = ''; }
+});
 document.getElementById('manageCropsBtn').addEventListener('click', () => {
   const panel = document.getElementById('cropPanel');
   const showing = panel.style.display !== 'none';
