@@ -1,0 +1,683 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>Harvest Log</title>
+<style>
+  :root {
+    --bg: #f7f8f4;
+    --card: #ffffff;
+    --border: #e3e6dc;
+    --text: #2a2e22;
+    --text-dim: #6b7060;
+    --text-faint: #a3a896;
+    --accent: #4a7c3f;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    padding-bottom: 40px;
+  }
+  .wrap { max-width: 480px; margin: 0 auto; padding: 20px 16px; }
+  header { display: flex; align-items: baseline; justify-content: space-between; margin-bottom: 18px; }
+  h1 { font-size: 22px; font-weight: 700; margin: 0; letter-spacing: -0.01em; }
+  #dateInput {
+    font-size: 14px; color: var(--text-dim); background: none;
+    border: none; border-bottom: 1px solid var(--border); padding: 4px 0;
+  }
+  .card {
+    background: var(--card); border: 1px solid var(--border); border-radius: 16px;
+    padding: 16px; margin-bottom: 20px; box-shadow: 0 1px 2px rgba(0,0,0,0.03);
+  }
+  label.field-label { display: block; font-size: 12px; color: var(--text-dim); margin-bottom: 6px; font-weight: 600; }
+  .pill-row {
+    display: flex; gap: 8px; flex-wrap: wrap;
+    margin-bottom: 10px;
+  }
+  .pill {
+    flex-shrink: 0; padding: 7px 14px; border-radius: 999px; font-size: 14px;
+    font-weight: 500; border: 1px solid var(--border); background: #fafbf7; color: var(--text-dim);
+    cursor: pointer;
+  }
+  .pill.active { background: var(--accent); color: #fff; border-color: var(--accent); }
+  .crop-input-wrap { position: relative; margin-bottom: 16px; }
+  #cropInput {
+    width: 100%; border: 1px solid var(--border); border-radius: 10px;
+    padding: 9px 11px; font-size: 15px;
+  }
+  .suggestions {
+    position: absolute; z-index: 10; left: 0; right: 0; top: 100%; margin-top: 4px;
+    background: #fff; border: 1px solid var(--border); border-radius: 10px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.08); overflow: hidden; display: none;
+  }
+  .suggestions button {
+    display: block; width: 100%; text-align: left; padding: 9px 12px;
+    border: none; background: none; font-size: 14px; color: var(--text-dim);
+    border-bottom: 1px solid #f2f1ee; cursor: pointer;
+  }
+  .suggestions button:last-child { border-bottom: none; }
+  .suggestions button:hover { background: #faf9f7; }
+  .unit-row { display: flex; gap: 8px; margin-bottom: 12px; }
+  .unit-pill {
+    flex: 1; text-align: center; padding: 8px; border-radius: 10px; font-size: 13px;
+    font-weight: 600; border: 1px solid var(--border); background: #fafbf7; color: var(--text-dim);
+    cursor: pointer;
+  }
+  .unit-pill.active { background: #2f5c8a; color: #fff; border-color: #2f5c8a; }
+  .weight-fields { display: flex; gap: 8px; margin-bottom: 10px; align-items: flex-end; }
+  .weight-fields .wf { flex: 1; }
+  .weight-fields label { display: block; font-size: 11px; color: var(--text-faint); margin-bottom: 3px; }
+  .weight-fields input, .weight-fields select {
+    width: 100%; border: 1px solid var(--border); border-radius: 10px;
+    padding: 9px 8px; font-size: 15px; background: #fff; color: var(--text);
+  }
+  .gram-preview {
+    text-align: center; font-size: 13px; color: var(--text-dim); background: #f2f4ec;
+    border-radius: 8px; padding: 8px; margin-bottom: 12px;
+  }
+  .gram-preview strong { color: var(--text); font-size: 15px; }
+  .btn-row { display: flex; gap: 8px; }
+  .btn {
+    flex: 1; padding: 11px; border-radius: 10px; font-size: 15px; font-weight: 700;
+    border: none; background: var(--accent); color: #fff; cursor: pointer;
+  }
+  .btn:disabled { opacity: 0.4; }
+  .btn.secondary { background: #fff; border: 1px solid var(--border); color: var(--text-dim); font-weight: 600; font-size: 13px; }
+  #cancelEditBtn {
+    display: none; font-size: 12px; color: var(--text-dim); background: none;
+    border: none; text-decoration: underline; cursor: pointer; margin-bottom: 10px;
+  }
+  .editing-banner {
+    display: none; font-size: 12px; font-weight: 600; color: #a8542f;
+    background: #fdf3ea; border: 1px solid #f3d9bd; border-radius: 8px;
+    padding: 6px 10px; margin-bottom: 10px;
+  }
+  .section-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; }
+  .section-head h2 { font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em; color: var(--text-dim); margin: 0; }
+  #exportBtn { font-size: 12px; font-weight: 600; color: var(--text-dim); text-decoration: underline; background: none; border: none; cursor: pointer; }
+  .empty { color: var(--text-faint); font-size: 14px; text-align: center; padding: 24px 0; font-style: italic; }
+  .crop-group { margin-bottom: 14px; }
+  .crop-group-head {
+    display: flex; justify-content: space-between; align-items: baseline;
+    font-size: 13px; font-weight: 700; color: var(--accent); margin-bottom: 6px;
+    padding: 0 2px;
+  }
+  ul.entry-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px; }
+  .entry {
+    background: #fff; border: 1px solid var(--border); border-radius: 10px;
+    padding: 8px 10px; display: flex; justify-content: space-between; align-items: center; gap: 8px;
+  }
+  .entry-text { font-size: 14px; color: var(--text); }
+  .entry-raw { font-size: 12px; color: var(--text-faint); }
+  .entry-actions { display: flex; gap: 10px; flex-shrink: 0; }
+  .entry-actions button { border: none; background: none; font-size: 12px; font-weight: 600; cursor: pointer; padding: 0; }
+  .edit-btn { color: var(--text-faint); }
+  .delete-btn { color: #d6ab9f; font-size: 16px !important; }
+  .day-total {
+    text-align: right; font-size: 13px; font-weight: 700; color: var(--text);
+    padding: 10px 2px 0;
+  }
+  #resetBtn { font-size: 12px; color: var(--text-faint); background: none; border: none; margin-top: 16px; cursor: pointer; }
+  .crop-mgmt { margin-top: 18px; padding-top: 14px; border-top: 1px solid var(--border); }
+  #manageCropsBtn { font-size: 12px; font-weight: 600; color: var(--text-dim); background: none; border: none; text-decoration: underline; cursor: pointer; padding: 0; }
+  #cropPanel { margin-top: 10px; }
+  ul#cropList { list-style: none; margin: 0; padding: 0; }
+  ul#cropList li { display: flex; align-items: center; gap: 8px; padding: 6px 0; border-bottom: 1px solid #f2f1ee; font-size: 13px; }
+  ul#cropList li input[type=text] { flex: 1; border: 1px solid var(--border); border-radius: 6px; padding: 4px 6px; font-size: 13px; }
+  ul#cropList li button { border: none; background: none; font-size: 12px; font-weight: 600; color: var(--text-dim); cursor: pointer; }
+  ul#cropList li button.del { color: #d6ab9f; }
+  #statusMsg { font-size: 12px; padding: 8px 12px; border-radius: 8px; margin-bottom: 16px; display: none; }
+  #statusMsg.error { display: block; background: #fef2f2; color: #b91c1c; border: 1px solid #fecaca; }
+  #statusMsg.ok { display: block; background: #f0fdf4; color: #15803d; border: 1px solid #bbf7d0; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>Harvest Log</h1>
+    <input type="date" id="dateInput">
+  </header>
+
+  <div id="statusMsg"></div>
+
+  <div class="card">
+    <div class="editing-banner" id="editingBanner">Editing entry — Update to save changes</div>
+    <button id="cancelEditBtn">Cancel edit</button>
+
+    <label class="field-label">Crop</label>
+    <div class="pill-row" id="cropPillRow"></div>
+    <div class="crop-input-wrap">
+      <input type="text" id="cropInput" placeholder="Type a crop name...">
+      <div class="suggestions" id="cropSuggestions"></div>
+    </div>
+
+    <label class="field-label">Weight</label>
+    <div class="unit-row" id="unitRow"></div>
+
+    <div id="lbOzFields" class="weight-fields">
+      <div class="wf">
+        <label>Pounds</label>
+        <input type="number" id="lbInput" min="0" inputmode="numeric" value="0">
+      </div>
+      <div class="wf">
+        <label>Ounces</label>
+        <input type="number" id="ozInput" min="0" max="15" inputmode="numeric" value="0">
+      </div>
+      <div class="wf">
+        <label>Fraction</label>
+        <select id="fracInput">
+          <option value="0">—</option>
+          <option value="0.125">1/8</option>
+          <option value="0.25">1/4</option>
+          <option value="0.375">3/8</option>
+          <option value="0.5">1/2</option>
+          <option value="0.625">5/8</option>
+          <option value="0.75">3/4</option>
+          <option value="0.875">7/8</option>
+        </select>
+      </div>
+    </div>
+
+    <div id="kgFields" class="weight-fields" style="display:none;">
+      <div class="wf">
+        <label>Kilograms</label>
+        <input type="number" id="kgInput" min="0" step="0.001" inputmode="decimal" value="0">
+      </div>
+    </div>
+
+    <div id="gFields" class="weight-fields" style="display:none;">
+      <div class="wf">
+        <label>Grams</label>
+        <input type="number" id="gInput" min="0" step="0.1" inputmode="decimal" value="0">
+      </div>
+    </div>
+
+    <div class="gram-preview">= <strong id="gramPreview">0 g</strong></div>
+
+    <div class="btn-row">
+      <button class="btn" id="saveBtn">Save weighing</button>
+    </div>
+  </div>
+
+  <div class="section-head">
+    <h2 id="listHeading">Today</h2>
+    <button id="exportBtn">Export all as CSV</button>
+  </div>
+  <div id="entryListWrap"></div>
+
+  <button id="resetBtn">Erase all entries</button>
+
+  <div class="crop-mgmt">
+    <button id="manageCropsBtn">Manage crop names</button>
+    <div id="cropPanel" style="display:none;">
+      <ul id="cropList"></ul>
+    </div>
+  </div>
+</div>
+
+<script>
+const LB_TO_G = 453.59237;
+const OZ_TO_G = 28.349523125;
+
+let entriesByDate = {};
+let crops = {}; // name -> usage count
+let currentDate = todayStr();
+let unit = 'lboz'; // 'lboz' | 'kg' | 'g'
+let editingId = null;
+
+function todayStr() {
+  const d = new Date();
+  return d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
+}
+
+function showStatus(msg, kind) {
+  const el = document.getElementById('statusMsg');
+  el.textContent = msg;
+  el.className = kind;
+  if (kind === 'ok') setTimeout(() => { el.className = ''; }, 1500);
+}
+
+// ---- persistence ----
+function load() {
+  try {
+    const e = localStorage.getItem('harvest_entries');
+    const c = localStorage.getItem('harvest_crops');
+    if (e) entriesByDate = JSON.parse(e);
+    if (c) crops = JSON.parse(c);
+  } catch (err) {
+    showStatus('Could not load saved data - starting fresh.', 'error');
+  }
+}
+function saveEntries() {
+  try { localStorage.setItem('harvest_entries', JSON.stringify(entriesByDate)); }
+  catch (err) { showStatus('Could not save - storage may be full or blocked.', 'error'); }
+}
+function saveCrops() {
+  try { localStorage.setItem('harvest_crops', JSON.stringify(crops)); }
+  catch (err) { showStatus('Could not save crop list.', 'error'); }
+}
+function saveDraft() {
+  try {
+    const draft = {
+      currentDate, unit, editingId,
+      crop: document.getElementById('cropInput').value,
+      lb: document.getElementById('lbInput').value,
+      oz: document.getElementById('ozInput').value,
+      frac: document.getElementById('fracInput').value,
+      kg: document.getElementById('kgInput').value,
+      g: document.getElementById('gInput').value,
+    };
+    localStorage.setItem('harvest_draft', JSON.stringify(draft));
+  } catch (err) { /* best effort */ }
+}
+function loadDraft() {
+  try {
+    const raw = localStorage.getItem('harvest_draft');
+    return raw ? JSON.parse(raw) : null;
+  } catch (err) { return null; }
+}
+function clearDraft() {
+  try { localStorage.removeItem('harvest_draft'); } catch (err) {}
+}
+
+// ---- weight math ----
+function currentGrams() {
+  if (unit === 'lboz') {
+    const lb = parseFloat(document.getElementById('lbInput').value) || 0;
+    const oz = parseFloat(document.getElementById('ozInput').value) || 0;
+    const frac = parseFloat(document.getElementById('fracInput').value) || 0;
+    return lb * LB_TO_G + (oz + frac) * OZ_TO_G;
+  } else if (unit === 'kg') {
+    const kg = parseFloat(document.getElementById('kgInput').value) || 0;
+    return kg * 1000;
+  } else {
+    return parseFloat(document.getElementById('gInput').value) || 0;
+  }
+}
+function currentRawText() {
+  if (unit === 'lboz') {
+    const lb = parseFloat(document.getElementById('lbInput').value) || 0;
+    const oz = parseInt(document.getElementById('ozInput').value) || 0;
+    const fracVal = document.getElementById('fracInput').value;
+    const fracLabels = {'0':'', '0.125':' 1/8', '0.25':' 1/4', '0.375':' 3/8', '0.5':' 1/2', '0.625':' 5/8', '0.75':' 3/4', '0.875':' 7/8'};
+    return lb + ' lb ' + oz + fracLabels[fracVal] + ' oz';
+  } else if (unit === 'kg') {
+    return (parseFloat(document.getElementById('kgInput').value) || 0) + ' kg';
+  } else {
+    return (parseFloat(document.getElementById('gInput').value) || 0) + ' g';
+  }
+}
+
+function updatePreview() {
+  const g = currentGrams();
+  document.getElementById('gramPreview').textContent = g.toFixed(1) + ' g';
+}
+
+// ---- crop autocomplete ----
+function matchingCrops(prefix) {
+  if (!prefix.trim()) return [];
+  const p = prefix.toLowerCase();
+  return Object.entries(crops)
+    .filter(([name]) => name.toLowerCase().startsWith(p) && name.toLowerCase() !== p)
+    .sort((a,b) => b[1]-a[1]).map(([name]) => name);
+}
+function renderCropSuggestions() {
+  const val = document.getElementById('cropInput').value;
+  const box = document.getElementById('cropSuggestions');
+  const matches = matchingCrops(val);
+  if (matches.length > 0) {
+    box.innerHTML = '';
+    matches.forEach(name => {
+      const b = document.createElement('button');
+      b.textContent = name;
+      b.onclick = () => { document.getElementById('cropInput').value = name; box.style.display = 'none'; renderCropPills(); saveDraft(); };
+      box.appendChild(b);
+    });
+    box.style.display = 'block';
+  } else {
+    box.style.display = 'none';
+  }
+}
+function renderCropPills() {
+  const row = document.getElementById('cropPillRow');
+  const active = document.getElementById('cropInput').value.trim();
+  const sorted = Object.entries(crops).sort((a,b) => b[1]-a[1]).map(([name]) => name);
+  row.innerHTML = '';
+  sorted.forEach(name => {
+    const btn = document.createElement('button');
+    btn.className = 'pill' + (name === active ? ' active' : '');
+    btn.textContent = name;
+    btn.onclick = () => { document.getElementById('cropInput').value = name; renderCropPills(); saveDraft(); };
+    row.appendChild(btn);
+  });
+}
+
+// ---- unit selector ----
+function renderUnitRow() {
+  const row = document.getElementById('unitRow');
+  const options = [['lboz','lb + oz'], ['kg','kg'], ['g','g']];
+  row.innerHTML = '';
+  options.forEach(([key, label]) => {
+    const btn = document.createElement('button');
+    btn.className = 'unit-pill' + (unit === key ? ' active' : '');
+    btn.textContent = label;
+    btn.onclick = () => { unit = key; renderUnitRow(); renderWeightFields(); updatePreview(); saveDraft(); };
+    row.appendChild(btn);
+  });
+}
+function renderWeightFields() {
+  document.getElementById('lbOzFields').style.display = unit === 'lboz' ? 'flex' : 'none';
+  document.getElementById('kgFields').style.display = unit === 'kg' ? 'flex' : 'none';
+  document.getElementById('gFields').style.display = unit === 'g' ? 'flex' : 'none';
+}
+
+// ---- save / edit ----
+function saveEntry() {
+  const cropName = document.getElementById('cropInput').value.trim();
+  if (!cropName) { showStatus('Enter a crop name first.', 'error'); return; }
+  const grams = currentGrams();
+  if (grams <= 0) { showStatus('Enter a weight greater than zero.', 'error'); return; }
+
+  crops[cropName] = (crops[cropName] || 0) + 1;
+  saveCrops();
+
+  const entryData = {
+    crop: cropName,
+    grams: Math.round(grams * 10) / 10,
+    raw: currentRawText(),
+    unit: unit,
+  };
+
+  if (!entriesByDate[currentDate]) entriesByDate[currentDate] = [];
+
+  if (editingId !== null) {
+    const list = entriesByDate[currentDate];
+    const idx = list.findIndex(e => e.id === editingId);
+    if (idx !== -1) list[idx] = { id: editingId, ...entryData };
+    else entriesByDate[currentDate].push({ id: editingId, ...entryData });
+    editingId = null;
+    document.getElementById('editingBanner').style.display = 'none';
+    document.getElementById('cancelEditBtn').style.display = 'none';
+    document.getElementById('saveBtn').textContent = 'Save weighing';
+  } else {
+    entriesByDate[currentDate].push({ id: Date.now() + Math.random(), ...entryData });
+  }
+  saveEntries();
+
+  // Keep crop + unit selected (common case: many consecutive weighings of the same crop),
+  // just reset the numeric weight fields.
+  document.getElementById('lbInput').value = 0;
+  document.getElementById('ozInput').value = 0;
+  document.getElementById('fracInput').value = '0';
+  document.getElementById('kgInput').value = 0;
+  document.getElementById('gInput').value = 0;
+  updatePreview();
+  renderCropPills();
+  renderEntryList();
+  clearDraft();
+  showStatus('Saved.', 'ok');
+}
+
+function startEdit(entry) {
+  editingId = entry.id;
+  document.getElementById('cropInput').value = entry.crop;
+  unit = entry.unit;
+  renderUnitRow();
+  renderWeightFields();
+  renderCropPills();
+
+  if (entry.unit === 'lboz') {
+    // Reconstruct from grams isn't exact for lb/oz display, so re-derive whole lb/oz/fraction from stored grams.
+    let totalOz = entry.grams / OZ_TO_G;
+    let lb = Math.floor(totalOz / 16);
+    let remOz = totalOz - lb * 16;
+    let ozWhole = Math.floor(remOz);
+    let fracDecimal = Math.round((remOz - ozWhole) * 8) / 8;
+    if (fracDecimal >= 1) { ozWhole += 1; fracDecimal = 0; }
+    document.getElementById('lbInput').value = lb;
+    document.getElementById('ozInput').value = ozWhole;
+    document.getElementById('fracInput').value = String(fracDecimal === 0 ? '0' : fracDecimal);
+  } else if (entry.unit === 'kg') {
+    document.getElementById('kgInput').value = entry.grams / 1000;
+  } else {
+    document.getElementById('gInput').value = entry.grams;
+  }
+  updatePreview();
+  document.getElementById('editingBanner').style.display = 'block';
+  document.getElementById('cancelEditBtn').style.display = 'inline-block';
+  document.getElementById('saveBtn').textContent = 'Update weighing';
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+  saveDraft();
+}
+
+function cancelEdit() {
+  editingId = null;
+  document.getElementById('editingBanner').style.display = 'none';
+  document.getElementById('cancelEditBtn').style.display = 'none';
+  document.getElementById('saveBtn').textContent = 'Save weighing';
+  clearDraft();
+}
+
+function deleteEntry(id) {
+  entriesByDate[currentDate] = (entriesByDate[currentDate] || []).filter(e => e.id !== id);
+  saveEntries();
+  renderEntryList();
+}
+
+// ---- render entry list, grouped by crop with subtotals ----
+function renderEntryList() {
+  const list = entriesByDate[currentDate] || [];
+  const heading = document.getElementById('listHeading');
+  heading.textContent = (currentDate === todayStr() ? 'Today' : currentDate) + ' (' + list.length + ')';
+
+  const wrap = document.getElementById('entryListWrap');
+  if (list.length === 0) {
+    wrap.innerHTML = '<p class="empty">No entries yet for this date.</p>';
+    return;
+  }
+
+  const byCrop = {};
+  list.forEach(e => { (byCrop[e.crop] = byCrop[e.crop] || []).push(e); });
+
+  wrap.innerHTML = '';
+  let dayTotal = 0;
+  Object.entries(byCrop).forEach(([cropName, cropEntries]) => {
+    const subtotal = cropEntries.reduce((s, e) => s + e.grams, 0);
+    dayTotal += subtotal;
+
+    const group = document.createElement('div');
+    group.className = 'crop-group';
+    const head = document.createElement('div');
+    head.className = 'crop-group-head';
+    head.innerHTML = '<span></span><span></span>';
+    head.children[0].textContent = cropName + ' (' + cropEntries.length + ')';
+    head.children[1].textContent = subtotal.toFixed(1) + ' g';
+    group.appendChild(head);
+
+    const ul = document.createElement('ul');
+    ul.className = 'entry-list';
+    cropEntries.forEach(e => {
+      const li = document.createElement('li');
+      li.className = 'entry';
+      const left = document.createElement('div');
+      const t1 = document.createElement('div');
+      t1.className = 'entry-text';
+      t1.textContent = e.grams.toFixed(1) + ' g';
+      const t2 = document.createElement('div');
+      t2.className = 'entry-raw';
+      t2.textContent = e.raw;
+      left.appendChild(t1); left.appendChild(t2);
+      li.appendChild(left);
+      const actions = document.createElement('div');
+      actions.className = 'entry-actions';
+      const editBtn = document.createElement('button');
+      editBtn.className = 'edit-btn'; editBtn.textContent = 'Edit';
+      editBtn.onclick = () => startEdit(e);
+      const delBtn = document.createElement('button');
+      delBtn.className = 'delete-btn'; delBtn.textContent = '×';
+      delBtn.onclick = () => deleteEntry(e.id);
+      actions.appendChild(editBtn); actions.appendChild(delBtn);
+      li.appendChild(actions);
+      ul.appendChild(li);
+    });
+    group.appendChild(ul);
+    wrap.appendChild(group);
+  });
+
+  const totalEl = document.createElement('div');
+  totalEl.className = 'day-total';
+  totalEl.textContent = 'Day total: ' + dayTotal.toFixed(1) + ' g';
+  wrap.appendChild(totalEl);
+}
+
+// ---- CSV export (all dates, all entries) ----
+function csvEscape(val) {
+  const s = String(val);
+  if (/[",\n]/.test(s)) return '"' + s.replace(/"/g, '""') + '"';
+  return s;
+}
+function downloadCSV() {
+  const rows = [['Date','Crop','WeightGrams','RawEntry','UnitUsed']];
+  const dates = Object.keys(entriesByDate).sort();
+  let any = false;
+  dates.forEach(date => {
+    (entriesByDate[date] || []).slice().sort((a,b) => a.crop.localeCompare(b.crop)).forEach(e => {
+      rows.push([date, e.crop, e.grams.toFixed(1), e.raw, e.unit]);
+      any = true;
+    });
+  });
+  if (!any) { showStatus('No entries to export yet.', 'error'); return; }
+  const csv = rows.map(r => r.map(csvEscape).join(',')).join('\n') + '\n';
+  const blob = new Blob([csv], { type: 'text/csv' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  const lastDate = dates[dates.length - 1];
+  a.download = 'harvest-log-' + lastDate + '.csv';
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
+
+// ---- reset (entries only, crops preserved) ----
+function resetAllData() {
+  if (!confirm('Erase all saved harvest entries (every date)? Your crop list is not affected. This cannot be undone.')) return;
+  entriesByDate = {};
+  saveEntries();
+  renderEntryList();
+  showStatus('All entries erased. Your crop list was kept.', 'ok');
+}
+
+// ---- crop management ----
+function renderCropManageList() {
+  const list = document.getElementById('cropList');
+  const names = Object.entries(crops).sort((a,b) => b[1]-a[1]);
+  if (names.length === 0) {
+    list.innerHTML = '<li style="justify-content:center;color:var(--text-faint);font-style:italic;">No crops yet.</li>';
+    return;
+  }
+  list.innerHTML = '';
+  names.forEach(([name, count]) => {
+    const li = document.createElement('li');
+    const input = document.createElement('input');
+    input.type = 'text';
+    input.value = name;
+    li.appendChild(input);
+    const countSpan = document.createElement('span');
+    countSpan.style.color = 'var(--text-faint)';
+    countSpan.textContent = '(' + count + ')';
+    li.appendChild(countSpan);
+    const renameBtn = document.createElement('button');
+    renameBtn.textContent = 'Rename';
+    renameBtn.onclick = () => renameCrop(name, input.value.trim());
+    li.appendChild(renameBtn);
+    const delBtn = document.createElement('button');
+    delBtn.className = 'del'; delBtn.textContent = 'Delete';
+    delBtn.onclick = () => deleteCrop(name);
+    li.appendChild(delBtn);
+    list.appendChild(li);
+  });
+}
+function renameCrop(oldName, newName) {
+  if (!newName || newName === oldName) return;
+  const count = crops[oldName] || 0;
+  delete crops[oldName];
+  crops[newName] = (crops[newName] || 0) + count;
+  saveCrops();
+  // Retroactively rename in all existing entries so totals stay correctly grouped.
+  Object.keys(entriesByDate).forEach(date => {
+    entriesByDate[date].forEach(e => { if (e.crop === oldName) e.crop = newName; });
+  });
+  saveEntries();
+  renderCropManageList();
+  renderCropPills();
+  renderEntryList();
+  showStatus('Renamed "' + oldName + '" to "' + newName + '" (including past entries).', 'ok');
+}
+function deleteCrop(name) {
+  if (!confirm('Remove "' + name + '" from your crop list? Existing entries logged under this name are kept as-is.')) return;
+  delete crops[name];
+  saveCrops();
+  renderCropManageList();
+  renderCropPills();
+  showStatus('Removed "' + name + '" from crop list.', 'ok');
+}
+
+// ---- wire up events ----
+document.getElementById('dateInput').addEventListener('change', (e) => {
+  currentDate = e.target.value || todayStr();
+  renderEntryList();
+  saveDraft();
+});
+document.getElementById('cropInput').addEventListener('input', () => { renderCropSuggestions(); renderCropPills(); saveDraft(); });
+document.getElementById('lbInput').addEventListener('input', () => { updatePreview(); saveDraft(); });
+document.getElementById('ozInput').addEventListener('input', () => { updatePreview(); saveDraft(); });
+document.getElementById('fracInput').addEventListener('change', () => { updatePreview(); saveDraft(); });
+document.getElementById('kgInput').addEventListener('input', () => { updatePreview(); saveDraft(); });
+document.getElementById('gInput').addEventListener('input', () => { updatePreview(); saveDraft(); });
+document.getElementById('saveBtn').addEventListener('click', saveEntry);
+document.getElementById('cancelEditBtn').addEventListener('click', cancelEdit);
+document.getElementById('exportBtn').addEventListener('click', downloadCSV);
+document.getElementById('resetBtn').addEventListener('click', resetAllData);
+document.getElementById('manageCropsBtn').addEventListener('click', () => {
+  const panel = document.getElementById('cropPanel');
+  const showing = panel.style.display !== 'none';
+  panel.style.display = showing ? 'none' : 'block';
+  if (!showing) renderCropManageList();
+});
+
+// ---- init ----
+load();
+const draft = loadDraft();
+if (draft) {
+  currentDate = draft.currentDate || todayStr();
+  unit = draft.unit || 'lboz';
+  editingId = draft.editingId ?? null;
+}
+document.getElementById('dateInput').value = currentDate;
+renderUnitRow();
+renderWeightFields();
+if (draft) {
+  document.getElementById('cropInput').value = draft.crop || '';
+  document.getElementById('lbInput').value = draft.lb || 0;
+  document.getElementById('ozInput').value = draft.oz || 0;
+  document.getElementById('fracInput').value = draft.frac || '0';
+  document.getElementById('kgInput').value = draft.kg || 0;
+  document.getElementById('gInput').value = draft.g || 0;
+  if (editingId !== null) {
+    document.getElementById('editingBanner').style.display = 'block';
+    document.getElementById('cancelEditBtn').style.display = 'inline-block';
+    document.getElementById('saveBtn').textContent = 'Update weighing';
+  }
+}
+renderCropPills();
+updatePreview();
+renderEntryList();
+</script>
+</body>
+</html>
